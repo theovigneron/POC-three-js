@@ -1,5 +1,7 @@
 import { ElementRef, Injectable, NgZone, OnDestroy } from '@angular/core';
 import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { GridHelper, TextureLoader, DirectionalLight } from 'three';
 
 @Injectable({ providedIn: 'root' })
 export class EngineService implements OnDestroy {
@@ -8,12 +10,15 @@ export class EngineService implements OnDestroy {
   private camera: THREE.PerspectiveCamera;
   private scene: THREE.Scene;
   private light: THREE.AmbientLight;
-
+  private controls: OrbitControls;
+  private gridHelper: GridHelper;
   private cube: THREE.Mesh;
 
   private frameId: number = null;
+  private textureLoader: TextureLoader;
 
   public constructor(private ngZone: NgZone) {
+    this.textureLoader = new TextureLoader();
   }
 
   public ngOnDestroy(): void {
@@ -33,48 +38,52 @@ export class EngineService implements OnDestroy {
 
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
-      alpha: true,    // transparent background
-      antialias: true // smooth edges
+      alpha: true, // transparent background
+      antialias: true, // smooth edges
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.setClearColor(0xeeeeee);
 
     // create the scene
     this.scene = new THREE.Scene();
 
     this.camera = new THREE.PerspectiveCamera(
-      75, window.innerWidth / window.innerHeight, 0.1, 1000
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
     );
     this.camera.position.z = 5;
     this.scene.add(this.camera);
 
     // soft white light
-    this.light = new THREE.AmbientLight(0x404040);
+    const color = 0x000000;
+    const intensity = 1;
+    this.light = new THREE.AmbientLight(color, intensity);
     this.light.position.z = 10;
     this.scene.add(this.light);
 
     const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshBasicMaterial({color: 0x00ff00});
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x049ef4,
+      emissive: 0x000000,
+      roughness: 0,
+      metalness: 1,
+      flatShading: true,
+    });
     this.cube = new THREE.Mesh(geometry, material);
     this.scene.add(this.cube);
 
-  }
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement); // Initialiser les contrôles
+    this.controls.enableDamping = true; // Activer l'amortissement
+    this.controls.dampingFactor = 0.25; // Facteur d'amortissement
+    this.controls.enableZoom = true; // Activer le zoom
+    this.controls.enablePan = true; // Activer le déplacement panoramique
 
-  public animate(): void {
-    // We have to run this outside angular zones,
-    // because it could trigger heavy changeDetection cycles.
-    this.ngZone.runOutsideAngular(() => {
-      if (document.readyState !== 'loading') {
-        this.render();
-      } else {
-        window.addEventListener('DOMContentLoaded', () => {
-          this.render();
-        });
-      }
+    this.gridHelper = new GridHelper(10, 10); // (taille, divisions)
+    this.gridHelper.position.y = -0.5; // Positionner la grille pour qu'elle soit sous le cube
 
-      window.addEventListener('resize', () => {
-        this.resize();
-      });
-    });
+    this.scene.add(this.gridHelper);
   }
 
   public render(): void {
@@ -82,10 +91,24 @@ export class EngineService implements OnDestroy {
       this.render();
     });
 
-    this.cube.rotation.x += 0.01;
-    this.cube.rotation.y += 0.01;
     this.renderer.render(this.scene, this.camera);
   }
+
+  // public animate(): void {
+  //   this.ngZone.runOutsideAngular(() => {
+  //     if (document.readyState !== 'loading') {
+  //       this.render();
+  //     } else {
+  //       window.addEventListener('DOMContentLoaded', () => {
+  //         this.render();
+  //       });
+  //     }
+
+  //     window.addEventListener('resize', () => {
+  //       this.resize();
+  //     });
+  //   });
+  // }
 
   public resize(): void {
     const width = window.innerWidth;

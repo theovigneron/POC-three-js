@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, ElementRef, OnInit, ViewChild, ViewEncapsulation } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  OnInit,
+  ViewChild,
+  ViewEncapsulation,
+} from '@angular/core';
 import { EngineService } from './engine.service';
 
 @Component({
@@ -6,19 +13,17 @@ import { EngineService } from './engine.service';
   standalone: true,
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './engine.component.html'
+  styleUrls: ['./engine.component.scss'],
+  templateUrl: './engine.component.html',
 })
 export class EngineComponent implements OnInit {
-
-  @ViewChild('rendererCanvas', {static: true})
+  @ViewChild('rendererCanvas', { static: true })
   public rendererCanvas: ElementRef<HTMLCanvasElement>;
 
-  public constructor(private engServ: EngineService) {
-  }
+  public constructor(private engServ: EngineService) {}
 
   public ngOnInit(): void {
     this.engServ.createScene(this.rendererCanvas);
-    this.engServ.animate();
+    this.engServ.render();
   }
-
 }
