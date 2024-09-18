@@ -203,78 +203,77 @@ export class EngineService implements OnDestroy {
     const slantHeight = Math.sqrt(
       Math.pow(coneRadius, 2) + Math.pow(coneRadius, 2)
     );
-    console.log(coneRadius * 2 - slantHeight);
+    console.log(slantHeight);
     switch (wallType) {
       case 'front':
-        numConesRow = Math.floor((height - thickness * 2) / slantHeight);
-        numConesColumn = Math.floor((width - thickness * 2) / slantHeight);
+        numConesRow = Math.floor(height / slantHeight);
+        numConesColumn = Math.floor(width / slantHeight);
         console.log(numConesColumn);
 
-        for (let i = 0; i <= numConesColumn; i++) {
-          let x, y, z;
-          const coneInstance = cone.clone();
-          x = -width / 2 + thickness + slantHeight / 2 + i * slantHeight;
-          y = 0;
-          z = -length / 2 + thickness + coneHeight / 2;
-          coneInstance.rotation.x = Math.PI / 2;
-          coneInstance.position.set(x, y, z);
-          this.scene.add(coneInstance);
-          // for (let j = 0; j < numConesRow; j++) {
-
-          // }
+        for (let i = 0; i <= numConesRow; i++) {
+          for (let j = 0; j < numConesColumn; j++) {
+            let x, y, z;
+            const coneInstance = cone.clone();
+            x = -width / 2 + thickness + slantHeight / 2 + j * slantHeight;
+            y = thickness * 2 + i * slantHeight;
+            z = -length / 2 + thickness + coneHeight / 2;
+            coneInstance.rotation.x = Math.PI / 2;
+            coneInstance.position.set(x, y, z);
+            this.scene.add(coneInstance);
+          }
         }
         break;
-      // case 'back':
-      //   numConesRow = Math.floor(height / spacing + coneRadius * 2);
-      //   numConesColumn = Math.floor(width / spacing + coneRadius * 2);
-      //   for (let i = 0; i < numConesColumn; i++) {
-      //     for (let j = 0; j < numConesRow; j++) {
-      //       let x, y, z;
-      //       const coneInstance = cone.clone();
-      //       x = -width / 2 + thickness + coneRadius + i * spacing;
-      //       y = 0.25 + j * spacing;
-      //       z = length / 2 - thickness - coneRadius;
-      //       coneInstance.rotation.x = -Math.PI / 2;
-      //       coneInstance.position.set(x, y, z);
-      //       this.scene.add(coneInstance);
-      //     }
-      //   }
-      //   break;
-      // case 'left':
-      //   numConesRow = Math.floor(length / spacing + coneRadius * 2);
-      //   numConesColumn = Math.floor(height / spacing + coneRadius * 2);
-      //   for (let i = 0; i < numConesColumn; i++) {
-      //     for (let j = 0; j < numConesRow; j++) {
-      //       let x, y, z;
-      //       const coneInstance = cone.clone();
-      //       x = -(width / 2);
-      //       y = spacing / 2 + i * spacing;
-      //       z = -length / 2 + spacing / 2 + j * spacing;
-      //       coneInstance.rotation.z = -Math.PI / 2;
-      //       coneInstance.position.set(
-      //         -width / 2 + thickness + coneRadius,
-      //         y,
-      //         z
-      //       );
-      //       this.scene.add(coneInstance);
-      //     }
-      //   }
-      //   break;
-      // case 'right':
-      //   numConesRow = Math.floor(length / spacing + coneRadius * 2);
-      //   numConesColumn = Math.floor(height / spacing + coneRadius * 2);
-      //   for (let i = 0; i < numConesColumn; i++) {
-      //     for (let j = 0; j < numConesRow; j++) {
-      //       const coneInstance = cone.clone();
-      //       x = width / 2 - thickness - coneRadius;
-      //       y = spacing / 2 + i * spacing;
-      //       z = -length / 2 + spacing / 2 + j * spacing;
-      //       coneInstance.rotation.z = Math.PI / 2;
-      //       coneInstance.position.set(x, y, z);
-      //       this.scene.add(coneInstance);
-      //     }
-      //   }
-      //   break;
+      case 'back':
+        numConesRow = Math.floor(height / slantHeight);
+        numConesColumn = Math.floor(width / slantHeight);
+        for (let i = 0; i < numConesColumn; i++) {
+          for (let j = 0; j < numConesRow; j++) {
+            let x, y, z;
+            const coneInstance = cone.clone();
+            x = -width / 2 + thickness + coneRadius + i * slantHeight;
+            y = 0.25 + j * slantHeight;
+            z = length / 2 - thickness - coneRadius;
+            coneInstance.rotation.x = -Math.PI / 2;
+            coneInstance.position.set(x, y, z);
+            this.scene.add(coneInstance);
+          }
+        }
+        break;
+      case 'left':
+        numConesRow = Math.floor(length / slantHeight);
+        numConesColumn = Math.floor(height / slantHeight);
+        for (let i = 0; i < numConesColumn; i++) {
+          for (let j = 0; j < numConesRow; j++) {
+            let x, y, z;
+            const coneInstance = cone.clone();
+            x = -(width / 2);
+            y = slantHeight / 2 + i * slantHeight;
+            z = -length / 2 + slantHeight / 2 + j * slantHeight;
+            coneInstance.rotation.z = -Math.PI / 2;
+            coneInstance.position.set(
+              -width / 2 + thickness + coneRadius,
+              y,
+              z
+            );
+            this.scene.add(coneInstance);
+          }
+        }
+        break;
+      case 'right':
+        numConesRow = Math.floor(length / slantHeight);
+        numConesColumn = Math.floor(height / slantHeight);
+        for (let i = 0; i < numConesColumn; i++) {
+          for (let j = 0; j < numConesRow; j++) {
+            const coneInstance = cone.clone();
+            x = width / 2 - thickness - coneRadius;
+            y = slantHeight / 2 + i * slantHeight;
+            z = -length / 2 + slantHeight / 2 + j * slantHeight;
+            coneInstance.rotation.z = Math.PI / 2;
+            coneInstance.position.set(x, y, z);
+            this.scene.add(coneInstance);
+          }
+        }
+        break;
     }
   }
 
