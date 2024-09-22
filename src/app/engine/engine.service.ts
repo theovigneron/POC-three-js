@@ -1,7 +1,17 @@
-import { ElementRef, Injectable, NgZone, OnDestroy } from '@angular/core';
+import {
+  ElementRef,
+  Injectable,
+  model,
+  NgZone,
+  OnDestroy,
+} from '@angular/core';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GridHelper, TextureLoader } from 'three';
+import { CSG } from 'three-csg-ts';
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader';
+import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
 @Injectable({ providedIn: 'root' })
 export class EngineService implements OnDestroy {
@@ -23,10 +33,58 @@ export class EngineService implements OnDestroy {
     this.cleanUp();
   }
 
+  private loadGLBModel(
+    url: string,
+    position: THREE.Vector3,
+    scale: number = 1,
+    rotation: { x?: number; y?: number; z?: number } = {}
+  ): void {
+    const loader = new GLTFLoader();
+    loader.load(
+      url,
+      (gltf) => {
+        const model = gltf.scene;
+        model.position.copy(position);
+        model.scale.set(scale, scale, scale);
+        if (rotation.x !== undefined) model.rotation.x = rotation.x;
+        if (rotation.y !== undefined) model.rotation.y = rotation.y;
+        if (rotation.z !== undefined) model.rotation.z = rotation.z;
+        this.scene.add(model);
+      },
+      undefined,
+      (error) => console.error('Error loading GLB model:', error)
+    );
+  }
+
+  private createText(text: string, position: THREE.Vector3): void {
+    // Charger la police
+    const loader = new FontLoader();
+    loader.load('assets/fonts/helvetiker_bold.typeface.json', (font) => {
+      const geometry = new TextGeometry(text, {
+        font: font,
+        size: 0.25,
+        height: 0.05,
+        curveSegments: 32,
+      });
+
+      const material = new THREE.MeshStandardMaterial({
+        color: 0xffffff, // Couleur du texte
+        roughness: 0.7,
+        metalness: 0.0,
+      });
+
+      const textMesh = new THREE.Mesh(geometry, material);
+      textMesh.position.copy(position);
+      textMesh.rotateY(Math.PI);
+      this.scene.add(textMesh);
+    });
+  }
+
   private createCone(
     radius: number,
     height: number,
-    radialSegments: number
+    radialSegments: number,
+    color: number = 0x2b7ec1
   ): THREE.Mesh {
     const coneGeometry = new THREE.ConeGeometry(
       radius,
@@ -37,7 +95,7 @@ export class EngineService implements OnDestroy {
       -Math.PI / 4
     );
     const coneMaterial = new THREE.MeshStandardMaterial({
-      color: 0x2b7ec1, // Couleur des cônes
+      color: color,
       roughness: 0.8,
       metalness: 0.2,
     });
@@ -71,6 +129,17 @@ export class EngineService implements OnDestroy {
     this.initObjects(width, length, height, thickness);
     this.initControls();
     this.addHelpers();
+
+    // Charger le modèle GLB
+    const modelPosition = new THREE.Vector3(
+      width / 2 - thickness * 1.25,
+      height,
+      length / 2 - thickness * 1.25
+    ); // Position du modèle
+    this.loadGLBModel('assets/glbFile/spot.glb', modelPosition, 1, {
+      x: Math.PI,
+      y: -Math.PI / 4,
+    });
   }
 
   private initCanvas(canvas: ElementRef<HTMLCanvasElement>): void {
@@ -122,51 +191,39 @@ export class EngineService implements OnDestroy {
       metalness: 0.55,
     });
 
-    const wallMaterialfront = new THREE.MeshStandardMaterial({
-      color: 0x000000,
-      roughness: 1,
-      metalness: 0,
-    });
-
-    // Mur avant
+    // Mur avant sans porte
     const frontWallGeometry = new THREE.BoxGeometry(width, height, thickness);
-    const frontWall = new THREE.Mesh(frontWallGeometry, wallMaterial);
-    frontWall.position.set(0, height / 2, -length / 2 + thickness / 2);
-    this.scene.add(frontWall);
-    this.addConesToWall(frontWall, width, length, height, thickness, 'front');
+    const frontWallMesh = new THREE.Mesh(frontWallGeometry, wallMaterial);
 
-    // Mur arrière
-    const backWallGeometry = new THREE.BoxGeometry(width, height, thickness);
-    const backWall = new THREE.Mesh(backWallGeometry, wallMaterial);
-    backWall.position.set(0, height / 2, length / 2 - thickness / 2);
-    this.scene.add(backWall);
-    this.addConesToWall(backWall, width, length, height, thickness, 'back');
+    // Créer la géométrie de la porte
+    const doorWidth = 1.05;
+    const doorHeight = 2;
+    const doorThickness = thickness + 0.1;
 
-    // Mur gauche
-    const leftWallGeometry = new THREE.BoxGeometry(thickness, height, length);
-    const leftWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
-    leftWall.position.set(-width / 2 + thickness / 2, height / 2, 0);
-    this.scene.add(leftWall);
-    this.addConesToWall(leftWall, width, length, height, thickness, 'left');
+    const doorGeometry = new THREE.BoxGeometry(
+      doorWidth,
+      doorHeight,
+      doorThickness
+    );
+    const doorMesh = new THREE.Mesh(doorGeometry);
 
-    // Mur droit
-    const rightWallGeometry = new THREE.BoxGeometry(thickness, height, length);
-    const rightWall = new THREE.Mesh(rightWallGeometry, wallMaterialfront);
-    rightWall.position.set(width / 2 - thickness / 2, height / 2, 0);
-    this.scene.add(rightWall);
-    this.addConesToWall(rightWall, width, length, height, thickness, 'right');
+    // Utiliser CSG pour soustraire la porte du mur
+    const csgWall = CSG.fromMesh(frontWallMesh);
+    const csgDoor = CSG.fromMesh(doorMesh);
+    const subtractedWall = csgWall.subtract(csgDoor);
+    // Convertir en mesh après la soustraction
+    const wallWithDoor = CSG.toMesh(
+      subtractedWall,
+      frontWallMesh.matrix,
+      wallMaterial
+    );
 
-    // Sol
-    const floorGeometry = new THREE.BoxGeometry(width, thickness, length);
-    const floor = new THREE.Mesh(floorGeometry, wallMaterial);
-    floor.position.set(0, 0, 0);
-    this.scene.add(floor);
+    // Ajouter le mur avec la porte à la scène
+    wallWithDoor.position.set(0, height / 2, -length / 2 + thickness / 2);
+    this.scene.add(wallWithDoor);
 
-    // Toit
-    const roofGeometry = new THREE.BoxGeometry(width, thickness, length);
-    const roof = new THREE.Mesh(roofGeometry, wallMaterial);
-    roof.position.set(0, height + thickness / 2, 0);
-    this.scene.add(roof);
+    // Ajouter les autres murs (sans modifications)
+    this.addWalls(width, length, height, thickness, wallMaterial);
 
     // Charger la texture d'environnement (cubeMap)
     const envTexture = new THREE.CubeTextureLoader()
@@ -181,99 +238,184 @@ export class EngineService implements OnDestroy {
       ]);
 
     this.scene.environment = envTexture;
+    // this.addConesToWall(width, length, height, thickness);
 
     // Ajouter le sol cadrillé
     this.addCheckeredFloor(width, length);
+
+    // Ajouter le texte au-dessus de la porte
+    const textPosition = new THREE.Vector3(
+      width / 2 - thickness,
+      height, // Positionner légèrement au-dessus du mur
+      -length / 2
+    );
+    this.createText('SIEPEL', textPosition);
   }
 
-  private addConesToWall(
-    wall: THREE.Mesh,
+  private addWalls(
     width: number,
     length: number,
     height: number,
     thickness: number,
-    wallType: 'front' | 'back' | 'left' | 'right'
+    wallMaterial: THREE.Material
   ): void {
-    const coneRadius = 0.5; // Rayon des cônes
-    const coneHeight = 1; // Hauteur des cônes
-    const radialSegments = 4; // Segments radiaux du cône
+    // Mur arrière (sans porte)
+    const backWallGeometry = new THREE.BoxGeometry(width, height, thickness);
+    const backWall = new THREE.Mesh(backWallGeometry, wallMaterial);
+    backWall.position.set(0, height / 2, length / 2 - thickness / 2);
+    this.scene.add(backWall);
 
+    // Mur gauche
+    const leftWallGeometry = new THREE.BoxGeometry(thickness, height, length);
+    const leftWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
+    leftWall.position.set(-width / 2 + thickness / 2, height / 2, 0);
+    this.scene.add(leftWall);
+
+    // Mur droit
+    const rightWallGeometry = new THREE.BoxGeometry(thickness, height, length);
+    const rightWall = new THREE.Mesh(rightWallGeometry, wallMaterial);
+    rightWall.position.set(width / 2 - thickness / 2, height / 2, 0);
+    this.scene.add(rightWall);
+
+    // Toit
+    const roofGeometry = new THREE.BoxGeometry(width, thickness, length);
+    const roof = new THREE.Mesh(roofGeometry, wallMaterial);
+    roof.position.set(0, height + thickness / 2, 0);
+    this.scene.add(roof);
+
+    // Sol (déjà existant dans votre code, je laisse pour la cohérence)
+    const floorGeometry = new THREE.BoxGeometry(width, thickness, length);
+    const floor = new THREE.Mesh(floorGeometry, wallMaterial);
+    floor.position.set(0, 0, 0);
+    this.scene.add(floor);
+  }
+
+  private addConesToWall(
+    width: number,
+    length: number,
+    height: number,
+    thickness: number,
+    coneHeight: number = 0.25,
+    coneRadius: number = 0.125,
+    radialSegments: number = 4
+  ): void {
     const cone = this.createCone(coneRadius, coneHeight, radialSegments);
-    let numConesRow, numConesColumn, x, y, z;
     const slantHeight = Math.sqrt(
       Math.pow(coneRadius, 2) + Math.pow(coneRadius, 2)
     );
-    console.log(slantHeight);
-    switch (wallType) {
-      case 'front':
-        numConesRow = Math.floor(height / slantHeight);
-        numConesColumn = Math.floor(width / slantHeight);
-        console.log(numConesColumn);
 
-        for (let i = 0; i <= numConesRow; i++) {
-          for (let j = 0; j < numConesColumn; j++) {
-            let x, y, z;
-            const coneInstance = cone.clone();
-            x = -width / 2 + thickness + slantHeight / 2 + j * slantHeight;
-            y = thickness * 2 + i * slantHeight;
-            z = -length / 2 + thickness + coneHeight / 2;
-            coneInstance.rotation.x = Math.PI / 2;
-            coneInstance.position.set(x, y, z);
-            this.scene.add(coneInstance);
-          }
+    // Calcul du nombre de cônes en fonction des dimensions du mur
+    const numConesRow = Math.floor((length - thickness) / slantHeight);
+    const numConesColumn = Math.floor((width - thickness) / slantHeight);
+    const numConesHeight = Math.floor((height - thickness) / slantHeight);
+    const quarterwidth = (width - thickness * 2) / 8;
+    const quarterlength = (length - thickness * 2) / 8;
+    // Fonction pour créer et positionner un cône
+    const addCone = (
+      x: number,
+      y: number,
+      z: number,
+      rotationX: number,
+      rotationY: number,
+      rotationZ: number,
+      newCone?: THREE.Mesh
+    ) => {
+      let coneInstance = cone.clone();
+      if (newCone) {
+        coneInstance = newCone.clone();
+      }
+      coneInstance.rotation.set(rotationX, rotationY, rotationZ);
+      coneInstance.position.set(x, y, z);
+      this.scene.add(coneInstance);
+    };
+
+    // Création des cônes sur les différents murs
+    for (let i = 0; i <= numConesHeight; i++) {
+      for (let j = 0; j < numConesColumn; j++) {
+        // Mur avant
+        addCone(
+          -width / 2 + thickness + slantHeight / 2 + j * slantHeight,
+          coneRadius + i * slantHeight,
+          -length / 2 + thickness + coneHeight / 2,
+          Math.PI / 2,
+          0,
+          0
+        );
+
+        // Mur arrière
+        addCone(
+          -width / 2 + thickness + slantHeight / 2 + j * slantHeight,
+          coneRadius + i * slantHeight,
+          length / 2 - thickness - coneRadius,
+          -Math.PI / 2,
+          0,
+          0
+        );
+      }
+    }
+
+    for (let i = 0; i < numConesHeight; i++) {
+      for (let j = 0; j < numConesRow; j++) {
+        // Mur gauche
+        addCone(
+          -width / 2 + thickness + coneRadius,
+          slantHeight + thickness / 2 + i * slantHeight,
+          -length / 2 + thickness + slantHeight / 2 + j * slantHeight,
+          0,
+          0,
+          -Math.PI / 2
+        );
+        // Mur droit
+
+        addCone(
+          width / 2 - thickness - coneRadius,
+          slantHeight + thickness / 2 + i * slantHeight,
+          -length / 2 + thickness + slantHeight / 2 + j * slantHeight,
+          0,
+          0,
+          Math.PI / 2
+        );
+      }
+    }
+
+    for (let i = 0; i < numConesColumn; i++) {
+      for (let j = 0; j < numConesRow; j++) {
+        // Mur du haut
+        addCone(
+          -width / 2 + thickness + coneRadius + i * slantHeight,
+          height - thickness / 2,
+          -length / 2 + thickness + slantHeight / 2 + j * slantHeight,
+          0,
+          0,
+          Math.PI
+        );
+        // Mur du bas
+        if (
+          quarterwidth * 3 < i * slantHeight &&
+          quarterwidth * 5 > i * slantHeight &&
+          quarterlength * 3 < j * slantHeight &&
+          quarterlength * 5 > j * slantHeight
+        ) {
+          addCone(
+            -width / 2 + thickness + coneRadius + i * slantHeight,
+            thickness + coneHeight / 2,
+            -length / 2 + thickness + slantHeight / 2 + j * slantHeight,
+            0,
+            0,
+            0,
+            this.createCone(coneRadius, 0.001, 4, 0x0f0f00)
+          );
+        } else {
+          addCone(
+            -width / 2 + thickness + coneRadius + i * slantHeight,
+            thickness - coneHeight / 2,
+            -length / 2 + thickness + slantHeight / 2 + j * slantHeight,
+            0,
+            0,
+            0
+          );
         }
-        break;
-      case 'back':
-        numConesRow = Math.floor(height / slantHeight);
-        numConesColumn = Math.floor(width / slantHeight);
-        for (let i = 0; i < numConesColumn; i++) {
-          for (let j = 0; j < numConesRow; j++) {
-            let x, y, z;
-            const coneInstance = cone.clone();
-            x = -width / 2 + thickness + coneRadius + i * slantHeight;
-            y = 0.25 + j * slantHeight;
-            z = length / 2 - thickness - coneRadius;
-            coneInstance.rotation.x = -Math.PI / 2;
-            coneInstance.position.set(x, y, z);
-            this.scene.add(coneInstance);
-          }
-        }
-        break;
-      case 'left':
-        numConesRow = Math.floor(length / slantHeight);
-        numConesColumn = Math.floor(height / slantHeight);
-        for (let i = 0; i < numConesColumn; i++) {
-          for (let j = 0; j < numConesRow; j++) {
-            let x, y, z;
-            const coneInstance = cone.clone();
-            x = -(width / 2);
-            y = slantHeight / 2 + i * slantHeight;
-            z = -length / 2 + slantHeight / 2 + j * slantHeight;
-            coneInstance.rotation.z = -Math.PI / 2;
-            coneInstance.position.set(
-              -width / 2 + thickness + coneRadius,
-              y,
-              z
-            );
-            this.scene.add(coneInstance);
-          }
-        }
-        break;
-      case 'right':
-        numConesRow = Math.floor(length / slantHeight);
-        numConesColumn = Math.floor(height / slantHeight);
-        for (let i = 0; i < numConesColumn; i++) {
-          for (let j = 0; j < numConesRow; j++) {
-            const coneInstance = cone.clone();
-            x = width / 2 - thickness - coneRadius;
-            y = slantHeight / 2 + i * slantHeight;
-            z = -length / 2 + slantHeight / 2 + j * slantHeight;
-            coneInstance.rotation.z = Math.PI / 2;
-            coneInstance.position.set(x, y, z);
-            this.scene.add(coneInstance);
-          }
-        }
-        break;
+      }
     }
   }
 
