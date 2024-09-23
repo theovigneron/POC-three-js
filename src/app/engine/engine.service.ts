@@ -238,7 +238,7 @@ export class EngineService implements OnDestroy {
       ]);
 
     this.scene.environment = envTexture;
-    // this.addConesToWall(width, length, height, thickness);
+    this.addConesToWall(width, length, height, thickness);
 
     // Ajouter le sol cadrillé
     this.addCheckeredFloor(width, length);
