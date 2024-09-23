@@ -1,36 +1,33 @@
 <div class="side-bar">
-  <form (ngSubmit)="onSubmit()">
-    <label for="width">Largeur:</label>
-    <input type="number" id="width" [(ngModel)]="width" name="width" required />
+  <form (ngSubmit)="onSubmit()" class="mat-form-group form">
+    <mat-form-field appearance="fill" class="form-input">
+      <mat-label>Largeur</mat-label>
+      <input matInput type="number" [(ngModel)]="width" name="width" required />
+    </mat-form-field>
 
-    <label for="length">Longueur:</label>
-    <input
-      type="number"
-      id="length"
-      [(ngModel)]="length"
-      name="length"
-      required
-    />
+    <mat-form-field appearance="fill">
+      <mat-label>Longueur</mat-label>
+      <input
+        matInput
+        type="number"
+        [(ngModel)]="length"
+        name="length"
+        required
+      />
+    </mat-form-field>
 
-    <label for="height">Hauteur:</label>
-    <input
-      type="number"
-      id="height"
-      [(ngModel)]="height"
-      name="height"
-      required
-    />
+    <mat-form-field appearance="fill">
+      <mat-label>Hauteur</mat-label>
+      <input
+        matInput
+        type="number"
+        [(ngModel)]="height"
+        name="height"
+        required
+      />
+    </mat-form-field>
 
-    <label for="thickness">Épaisseur:</label>
-    <input
-      type="number"
-      id="thickness"
-      [(ngModel)]="thickness"
-      name="thickness"
-      required
-    />
-
-    <button type="submit">Charger</button>
+    <button mat-raised-button color="primary" type="submit">Charger</button>
   </form>
 </div>
 <div class="engine-wrapper">

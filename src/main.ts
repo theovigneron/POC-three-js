@@ -3,9 +3,12 @@ import { bootstrapApplication } from '@angular/platform-browser';
 
 import { AppComponent } from './app/app.component';
 import { environment } from './environments/environment';
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 
 if (environment.production) {
   enableProdMode();
 }
 
-bootstrapApplication(AppComponent).catch(err => console.log(err));
+bootstrapApplication(AppComponent, {
+  providers: [provideAnimationsAsync(), provideAnimationsAsync()]
+}).catch(err => console.log(err));

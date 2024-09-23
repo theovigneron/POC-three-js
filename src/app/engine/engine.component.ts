@@ -7,7 +7,10 @@ import {
   ViewEncapsulation,
 } from '@angular/core';
 import { EngineService } from './engine.service';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
 
 @Component({
   selector: 'app-engine',
@@ -16,15 +19,21 @@ import { FormsModule } from '@angular/forms';
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrls: ['./engine.component.scss'],
   templateUrl: './engine.component.html',
-  imports: [FormsModule],
+  imports: [
+    FormsModule,
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+  ],
 })
 export class EngineComponent implements OnInit {
   @ViewChild('rendererCanvas', { static: true })
   public rendererCanvas: ElementRef<HTMLCanvasElement>;
 
-  public width: number = 25;
-  public length: number = 10;
-  public height: number = 5;
+  public width: number = 4;
+  public length: number = 4;
+  public height: number = 3;
   public thickness: number = 0.5;
 
   public constructor(private engServ: EngineService) {}
